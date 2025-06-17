@@ -218,7 +218,7 @@ def update_user_streak(db, user_id):
         if is_weekday(today):
             user["current_streak"] = user.get("current_streak", 0) + 1
         else:
-            # Weekend logs don't break or extend streaks
+            # Weekend logs don't break or extend streaks, but they still count as a log for the day
             pass
     
     # Update longest streak if current is longer
@@ -2473,3 +2473,38 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
+async def send_private_message_or_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int, text: str):
+    """Attempts to send a message to the user's private chat, falls back to group if fails."""
+    try:
+        await context.bot.send_message(chat_id=user_id, text=text)
+        logger.info(f"Sent private message to user {user_id}.")
+    except Exception as e:
+        logger.warning(f"Failed to send private message to user {user_id}: {e}. Falling back to group chat.")
+        if update.effective_chat.type != "private":
+            await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Please start a private chat with me first to receive messages like this directly. You can do so by clicking on my name or searching for me in Telegram.")
+        else:
+            logger.error(f"Could not send message to user {user_id} even in private chat: {e}")
+
+
+
+
+
+async def send_private_message_or_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int, text: str):
+    """Sends a message privately to the user, with a fallback to the group chat if private message fails."""
+    try:
+        await context.bot.send_message(chat_id=user_id, text=text)
+        logger.info(f"Sent private message to user {user_id}.")
+    except Exception as e:
+        logger.warning(f"Could not send private message to user {user_id}: {e}. Falling back to group chat.")
+        # Fallback to group chat, instructing user to start a private chat
+        if update.effective_chat.type != "private":
+            fallback_message = f"@{update.effective_user.username}, I couldn't send you a private message. Please start a private chat with me first! (e.g., by searching for me in Telegram and sending /start)"
+            await update.effective_chat.send_message(fallback_message)
+        else:
+            # If it's already a private chat and it failed, something else is wrong
+            await update.effective_chat.send_message("I'm having trouble sending messages. Please try again later.")
+
+
